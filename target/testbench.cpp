@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <chrono>
 
 #include "Args.h"
 #include "Dmi.h"

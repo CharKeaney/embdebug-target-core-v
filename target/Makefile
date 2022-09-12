@@ -19,15 +19,16 @@ VERILATED_VCD_C_DEPS ::= $(VINCDIR)/verilated_vcd_c.cpp \
                          $(VINCDIR)/verilated_trace_defs.h \
                          $(VINCDIR)/verilated_trace_imp.cpp \
                          $(VINCDIR)/verilated_intrinsics.h
-
-MCU_DIR := $(HOME)/gittrees/openhw/core-v-mcu
+TOP_DIR := $(PWD)/..
+MCU_DIR := $(TOP_DIR)/core-v-mcu
 MODEL_DIR ?= $(MCU_DIR)/build/openhwgroup.org_systems_core-v-mcu_0/model-lib-verilator
 MODEL_LIB ?= $(MODEL_DIR)/obj_dir/Vcore_v_mcu__ALL.a
+EMBDEBUG_INC ?= $(TOP_DIR)/debug-server/include
 
 CXX := g++
 CPPFLAGS := $(shell pkg-config --cflags verilator) -I$(MODEL_DIR)/obj_dir \
-            -I../vendor/cxxopts-3.0.0rc/include -DVL_TIME_CONTEXT
-CXXFLAGS := -O0 -g3
+            -I../vendor/cxxopts-3.0.0rc/include -I$(EMBDEBUG_INC) -DVL_TIME_CONTEXT -fPIC
+CXXFLAGS := -ggdb
 LDFLAGS :=
 
 CF_STYLE := "{BasedOnStyle: GNU, \
@@ -37,7 +38,7 @@ CF_STYLE := "{BasedOnStyle: GNU, \
 OBJS = Args.o Dmi.o DtmJtag.o Tap.o Utils.o VSim.o testbench.o TestJtag.o
 
 .PHONY: all
-all: mem_init testbench.exe
+all: mem_init testbench.exe target.so
 
 testbench.exe: $(OBJS) verilated.o verilated_vcd_c.o $(MODEL_LIB)
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -47,6 +48,10 @@ verilated.o: $(VERILATED_SRC) $(VERILATED_DEPS) $(MODEL_LIB)
 
 verilated_vcd_c.o: $(VERILATED_VCD_C_SRC) $(VERILATED_VCD_C_DEPS) $(MODEL_LIB)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(VERILATED_VCD_C_SRC)
+
+target.so: $(OBJS) verilated.o verilated_vcd_c.o TEMPLATE.o $(MODEL_LIB)
+#target.so: TEMPLATE.o
+	$(CXX) -shared -o $@ $^
 
 mem_init:
 	$(RM) $@
@@ -79,6 +84,8 @@ TestJtag.o: TestJtag.cpp
 Utils.o: Utils.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 VSim.o: VSim.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
+TEMPLATE.o: TEMPLATE.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 .PHONY: format
